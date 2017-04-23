@@ -31,7 +31,7 @@ func main() {
 	var branchName string
 	branchName, err = ref.Branch().Name()
 	if err != nil {
-		panic(err)
+		return
 	}
 	err = ioutil.WriteFile(os.Args[1], []byte(PrepareMessage(branchName, string(dat))), 0644)
 	if err != nil {
