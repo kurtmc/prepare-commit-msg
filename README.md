@@ -2,7 +2,11 @@ prepare-commit-msg
 ==================
 
 prepare-commit-msg hook for git, this will prefix your commits with the branch
-name if it matches the pattern `[A-Z]+-[0-9]+`.
+name if it matches the pattern:
+
+```
+[A-Z]+-[0-9]+
+```
 
 ## Building
 
