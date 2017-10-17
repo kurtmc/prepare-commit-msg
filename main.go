@@ -1,10 +1,10 @@
 package main
 
 import (
-	"regexp"
-	"os"
-	"io/ioutil"
 	"github.com/libgit2/git2go"
+	"io/ioutil"
+	"os"
+	"regexp"
 )
 
 func main() {
@@ -19,7 +19,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
 
 	var repo *git.Repository
 	repo, err = git.OpenRepository(pwd)
@@ -52,7 +51,7 @@ func PrepareMessage(branch, message string) string {
 	}
 
 	if !branchRegexp.MatchString(branch) {
-		return message	
+		return message
 	}
 
 	if messageRegexp.MatchString(message) {
@@ -60,7 +59,7 @@ func PrepareMessage(branch, message string) string {
 		if messageBranch == branch {
 			return message
 		} else {
-			return messageRegexp.ReplaceAllString(message, branch + ": ")
+			return messageRegexp.ReplaceAllString(message, branch+": ")
 		}
 	}
 
