@@ -1,10 +1,12 @@
 package main
 
 import (
-	"gopkg.in/libgit2/git2go.v27"
+	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"regexp"
+	"strings"
 )
 
 func main() {
@@ -15,30 +17,28 @@ func main() {
 		panic(err)
 	}
 
-	pwd, err := os.Getwd()
-	if err != nil {
-		panic(err)
-	}
-
-	var repo *git.Repository
-	repo, err = git.OpenRepository(pwd)
-	var ref *git.Reference
-	ref, err = repo.Head()
+	branchName, err := getCurrentBranch()
 	if err != nil {
 		return
 	}
-	var branchName string
-	branchName, err = ref.Branch().Name()
-	if err != nil {
-		return
-	}
-	err = ioutil.WriteFile(os.Args[1], []byte(PrepareMessage(branchName, string(dat))), 0644)
+	err = ioutil.WriteFile(os.Args[1], []byte(prepareMessage(branchName, string(dat))), 0644)
 	if err != nil {
 		panic(err)
 	}
 }
 
-func PrepareMessage(branch, message string) string {
+func getCurrentBranch() (string, error) {
+	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
+	out, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+
+	branch := strings.TrimSpace(fmt.Sprintf("%s", out))
+	return branch, nil
+}
+
+func prepareMessage(branch, message string) string {
 	var branchRegexp, messageRegexp *regexp.Regexp
 	var err error
 	branchRegexp, err = regexp.Compile("[A-Z]+-[0-9]+")
@@ -58,9 +58,8 @@ func PrepareMessage(branch, message string) string {
 		messageBranch := branchRegexp.FindString(message)
 		if messageBranch == branch {
 			return message
-		} else {
-			return messageRegexp.ReplaceAllString(message, branch+": ")
 		}
+		return messageRegexp.ReplaceAllString(message, branch+": ")
 	}
 
 	return branch + ": " + message

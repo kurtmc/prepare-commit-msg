@@ -1,0 +1,27 @@
+---
+platform: linux
+
+image_resource:
+  type: docker-image
+  source:
+    repository: golang
+    tag: '1.12-stretch'
+
+params:
+  GOOS: linux
+
+inputs:
+  - name: src
+
+outputs:
+  - name: built
+
+run:
+  path: sh
+  args:
+    - -c
+    - |
+      #!/bin/sh
+      cd src
+      go build
+      cp prepare-commit-msg ../built/prepare-commit-msg_${GOOS}

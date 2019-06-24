@@ -1,0 +1,52 @@
+---
+resources:
+  - name: prepare-commit-msg
+    type: git
+    source:
+      uri: git@github.com:kurtmc/prepare-commit-msg.git
+      branch: master
+      private_key: |
+        ((ssh-private-key))
+  - name: gh-release
+    type: github-release
+    source:
+      owner: kurtmc
+      repository: prepare-commit-msg
+      access_token: ((github-token))
+
+jobs:
+  - name: build-and-release
+    serial: true
+    plan:
+      - get: prepare-commit-msg
+        trigger: true
+      - task: test
+        file: prepare-commit-msg/ci/tasks/test.yml
+        input_mapping:
+          src: prepare-commit-msg
+      - aggregate:
+        - task: build-linux
+          file: prepare-commit-msg/ci/tasks/build.yml
+          input_mapping:
+            src: prepare-commit-msg
+        - task: build-darwin
+          file: prepare-commit-msg/ci/tasks/build.yml
+          params:
+            GOOS: darwin
+          input_mapping:
+            src: prepare-commit-msg
+          output_mapping:
+            built: built-darwin
+      - put: prepare-commit-msg
+        params:
+          repository: prepare-commit-msg
+          tag: prepare-commit-msg/.github-release/tag
+          tag_only: true
+      - put: gh-release
+        params:
+          name: prepare-commit-msg/.github-release/name
+          tag: prepare-commit-msg/.github-release/tag
+          body: prepare-commit-msg/.github-release/body
+          globs:
+            - built/prepare-commit-msg_linux
+            - built-darwin/prepare-commit-msg_darwin

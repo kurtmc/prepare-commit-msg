@@ -1,0 +1,1 @@
+Remove libgit2 dependency and just use git cli directly
