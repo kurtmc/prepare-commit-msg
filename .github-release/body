@@ -1,1 +1,1 @@
-Remove libgit2 dependency and just use git cli directly
+handle ticket numbers embedded in branch names better, for example feature/ABC-123

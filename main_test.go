@@ -17,6 +17,9 @@ func TestPrepareMessage(t *testing.T) {
 		{"ARC-123", "ARC-123: My commit", "ARC-123: My commit"},
 		{"testing", "My commit", "My commit"},
 		{"ARC-456", "ARC-123: My commit", "ARC-456: My commit"},
+		{"feature/thing/ARC-456", "My commit", "ARC-456: My commit"},
+		{"feature/thing/ARC-456", "ARC-456: My commit", "ARC-456: My commit"},
+		{"feature/ARC-789/thing", "My commit", "ARC-789: My commit"},
 	} {
 		got := prepareMessage(c.branch, c.message)
 		if got != c.want {
