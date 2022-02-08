@@ -39,8 +39,8 @@ func getCurrentBranch() (string, error) {
 }
 
 func prepareMessage(branch, message string) string {
-	branchRegexp := regexp.MustCompile("[A-Z]+-[0-9]+")
-	messageRegexp := regexp.MustCompile("^[A-Z]+-[0-9]+: ")
+	branchRegexp := regexp.MustCompile("[A-Z0-9]+-[0-9]+")
+	messageRegexp := regexp.MustCompile("^[A-Z0-9]+-[0-9]+: ")
 
 	if !branchRegexp.MatchString(branch) {
 		return message
