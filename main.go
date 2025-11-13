@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -17,11 +18,33 @@ func main() {
 		panic(err)
 	}
 
+	message := string(dat)
+
+	// Check if the message is 'wip' and replace it with Claude-generated message
+	firstLine := strings.Split(message, "\n")[0]
+	if isWipMessage(firstLine) {
+		fmt.Fprintln(os.Stderr, "🤖 Detected 'wip' commit message. Generating a better message with Claude...")
+
+		diff, err := getStagedDiff()
+		if err != nil || diff == "" {
+			fmt.Fprintln(os.Stderr, "⚠️  No staged changes found. Keeping default message.")
+		} else {
+			newMsg, err := generateCommitMessageWithClaude(diff)
+			if err != nil || newMsg == "" {
+				fmt.Fprintln(os.Stderr, "❌ Failed to generate message with Claude. Keeping 'wip'.")
+				fmt.Fprintln(os.Stderr, "   Make sure 'claude' CLI is installed and accessible.")
+			} else {
+				message = newMsg
+				fmt.Fprintf(os.Stderr, "✅ Updated commit message to: %s\n", newMsg)
+			}
+		}
+	}
+
 	branchName, err := getCurrentBranch()
 	if err != nil {
 		return
 	}
-	err = ioutil.WriteFile(os.Args[1], []byte(prepareMessage(branchName, string(dat))), 0644)
+	err = ioutil.WriteFile(os.Args[1], []byte(prepareMessage(branchName, message)), 0644)
 	if err != nil {
 		panic(err)
 	}
@@ -36,6 +59,45 @@ func getCurrentBranch() (string, error) {
 
 	branch := strings.TrimSpace(fmt.Sprintf("%s", out))
 	return branch, nil
+}
+
+func getStagedDiff() (string, error) {
+	cmd := exec.Command("git", "diff", "--cached")
+	out, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	return string(out), nil
+}
+
+func generateCommitMessageWithClaude(diff string) (string, error) {
+	prompt := fmt.Sprintf("Based on this git diff, write a very concise commit message (one line, maximum 50 characters). Only output the commit message itself, nothing else.\n\nGit diff:\n%s", diff)
+
+	cmd := exec.Command("claude", "--model", "haiku")
+	cmd.Stdin = strings.NewReader(prompt)
+
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	if err != nil {
+		return "", err
+	}
+
+	// Get the first line and trim whitespace
+	output := strings.TrimSpace(stdout.String())
+	lines := strings.Split(output, "\n")
+	if len(lines) > 0 {
+		return strings.TrimSpace(lines[0]), nil
+	}
+
+	return output, nil
+}
+
+func isWipMessage(message string) bool {
+	trimmed := strings.TrimSpace(message)
+	return strings.ToLower(trimmed) == "wip"
 }
 
 func prepareMessage(branch, message string) string {
