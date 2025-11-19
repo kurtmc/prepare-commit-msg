@@ -85,14 +85,22 @@ func generateCommitMessageWithClaude(diff string) (string, error) {
 		return "", err
 	}
 
-	// Get the first line and trim whitespace
+	// Get the output and strip markdown code fences if present
 	output := strings.TrimSpace(stdout.String())
 	lines := strings.Split(output, "\n")
-	if len(lines) > 0 {
-		return strings.TrimSpace(lines[0]), nil
+
+	// Strip markdown code fences and find the actual message
+	for _, line := range lines {
+		trimmedLine := strings.TrimSpace(line)
+		// Skip empty lines and code fence markers
+		if trimmedLine == "" || trimmedLine == "```" || strings.HasPrefix(trimmedLine, "```") {
+			continue
+		}
+		// Return the first non-fence line
+		return trimmedLine, nil
 	}
 
-	return output, nil
+	return "", fmt.Errorf("no valid commit message found in output")
 }
 
 func isWipMessage(message string) bool {
