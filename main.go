@@ -2,8 +2,8 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"regexp"
@@ -13,7 +13,7 @@ import (
 func main() {
 	var dat []byte
 	var err error
-	dat, err = ioutil.ReadFile(os.Args[1])
+	dat, err = os.ReadFile(os.Args[1])
 	if err != nil {
 		panic(err)
 	}
@@ -44,7 +44,7 @@ func main() {
 	if err != nil {
 		return
 	}
-	err = ioutil.WriteFile(os.Args[1], []byte(prepareMessage(branchName, message)), 0644)
+	err = os.WriteFile(os.Args[1], []byte(prepareMessage(branchName, message)), 0644)
 	if err != nil {
 		panic(err)
 	}
@@ -70,10 +70,20 @@ func getStagedDiff() (string, error) {
 	return string(out), nil
 }
 
+type claudeStreamMessage struct {
+	Type    string `json:"type"`
+	Message struct {
+		Content []struct {
+			Type string `json:"type"`
+			Text string `json:"text"`
+		} `json:"content"`
+	} `json:"message"`
+}
+
 func generateCommitMessageWithClaude(diff string) (string, error) {
 	prompt := fmt.Sprintf("Based on this git diff, write a very concise commit message (one line, maximum 50 characters). Only output the commit message itself, nothing else.\n\nGit diff:\n%s", diff)
 
-	cmd := exec.Command("claude", "-p", "--model", "haiku", prompt)
+	cmd := exec.Command("claude", "-p", "--model", "haiku", "--output-format", "stream-json", "--verbose", prompt)
 
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
@@ -81,21 +91,43 @@ func generateCommitMessageWithClaude(diff string) (string, error) {
 
 	err := cmd.Run()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("%w: %s", err, stderr.String())
 	}
 
-	// Get the output and strip markdown code fences if present
-	output := strings.TrimSpace(stdout.String())
-	lines := strings.Split(output, "\n")
-
-	// Strip markdown code fences and find the actual message
-	for _, line := range lines {
-		trimmedLine := strings.TrimSpace(line)
-		// Skip empty lines and code fence markers
-		if trimmedLine == "" || trimmedLine == "```" || strings.HasPrefix(trimmedLine, "```") {
+	// Parse stream-json output: each line is a JSON object.
+	// Look for assistant messages with text content blocks.
+	var textParts []string
+	for _, line := range strings.Split(stdout.String(), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
 			continue
 		}
-		// Return the first non-fence line
+		var msg claudeStreamMessage
+		if err := json.Unmarshal([]byte(line), &msg); err != nil {
+			continue
+		}
+		if msg.Type != "assistant" {
+			continue
+		}
+		for _, block := range msg.Message.Content {
+			if block.Type == "text" {
+				textParts = append(textParts, block.Text)
+			}
+		}
+	}
+
+	combined := strings.TrimSpace(strings.Join(textParts, ""))
+	if combined == "" {
+		return "", fmt.Errorf("no text content in claude response")
+	}
+
+	// Strip markdown code fences if present
+	lines := strings.Split(combined, "\n")
+	for _, line := range lines {
+		trimmedLine := strings.TrimSpace(line)
+		if trimmedLine == "" || strings.HasPrefix(trimmedLine, "```") {
+			continue
+		}
 		return trimmedLine, nil
 	}
 

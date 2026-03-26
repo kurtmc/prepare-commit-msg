@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"testing"
@@ -28,8 +27,42 @@ func TestPrepareMessage(t *testing.T) {
 	}
 }
 
+func TestGenerateCommitMessageWithClaude(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
+	diff := `diff --git a/main.go b/main.go
+index abc1234..def5678 100644
+--- a/main.go
++++ b/main.go
+@@ -1,3 +1,5 @@
+ package main
+
++import "fmt"
++
+ func main() {
++	fmt.Println("hello world")
+ }
+`
+	msg, err := generateCommitMessageWithClaude(diff)
+	if err != nil {
+		t.Fatalf("generateCommitMessageWithClaude failed: %v", err)
+	}
+
+	if msg == "" {
+		t.Fatal("expected non-empty commit message")
+	}
+
+	if len(msg) > 100 {
+		t.Errorf("commit message too long (%d chars): %s", len(msg), msg)
+	}
+
+	t.Logf("Generated commit message: %q", msg)
+}
+
 func TestGetCurrentBranch(t *testing.T) {
-	dir, err := ioutil.TempDir("", "prepare-commit-msg.test")
+	dir, err := os.MkdirTemp("", "prepare-commit-msg.test")
 	if err != nil {
 		t.Fatal("Could not create temp directory", err)
 	}
