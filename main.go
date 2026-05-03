@@ -83,7 +83,7 @@ type claudeStreamMessage struct {
 func generateCommitMessageWithClaude(diff string) (string, error) {
 	prompt := fmt.Sprintf("Based on this git diff, write a very concise commit message (one line, maximum 50 characters). Only output the commit message itself, nothing else.\n\nGit diff:\n%s", diff)
 
-	cmd := exec.Command("claude", "-p", "--model", "haiku", "--output-format", "stream-json", "--verbose", prompt)
+	cmd := exec.Command("claude", "-p", "--model", "sonnet", "--output-format", "stream-json", "--verbose", prompt)
 
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
